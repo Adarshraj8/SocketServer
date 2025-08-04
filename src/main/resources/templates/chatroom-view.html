@@ -1,0 +1,79 @@
+<!-- src/main/resources/templates/chatroom.html -->
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Chat Room</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+    <h2>Welcome to Chat Room: <span th:text="${roomId}"></span></h2>
+
+    <input type="text" id="username" placeholder="Your name">
+    <input type="text" id="usermessage" placeholder="Message">
+     <button onclick="sendChat()">Send</button>
+     
+<!--      <input type="text" id="recipientId" placeholder="Recipient user ID (for private)">
+     <button onclick="sendPrivateChat()">Send Private</button> -->
+     
+    <div id="notifications"></div>
+
+    <script th:inline="javascript">
+        let roomId = [[${roomId}]]; // Injected by Spring
+        let stompClient = null;
+
+        const connect = () => {
+            const socket = new SockJS("/ws");
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, () => {
+                stompClient.subscribe(`/topic/message/${roomId}`, (data) => {
+                    const msg = JSON.parse(data.body);
+                    document.getElementById('notifications').innerHTML += 
+                        `<p><strong>${msg.name}:</strong> ${msg.message}</p>`;
+                });
+                
+                /* // Subscribe to private messages
+                stompClient.subscribe(`/user/queue/privateMessage/${roomId}`, (data) => {
+                    const msg = JSON.parse(data.body);
+                    document.getElementById('notifications').innerHTML += 
+                        `<p style="color:red;"><strong>[Private] ${msg.name}:</strong> ${msg.message}</p>`;
+                }); */
+            });
+            
+       
+
+        };
+
+        const sendChat = () => {
+            const name = document.getElementById("username").value;
+            const message = document.getElementById("usermessage").value;
+
+            stompClient.send(`/app/chat/${roomId}`, {}, JSON.stringify({
+                name,
+                message
+            }));
+        }; 
+        
+       /*  const sendPrivateChat = () => {
+            const name = document.getElementById("username").value;
+            const message = document.getElementById("usermessage").value;
+            const recipientId = document.getElementById("recipientId").value;
+
+            if (!recipientId) {
+                alert("Please enter a recipient user ID.");
+                return;
+            }
+
+            stompClient.send(`/app/privateChat/${roomId}/${recipientId}`, {}, JSON.stringify({
+                name,
+                message,
+                recipientId
+            }));
+        }; */
+
+
+        document.addEventListener("DOMContentLoaded", connect);
+    </script>
+</body>
+</html>
